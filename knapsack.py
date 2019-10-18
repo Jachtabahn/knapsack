@@ -1,4 +1,6 @@
 import sys
+import logging
+import argparse
 
 '''
     If the 'subtract' argument is no given:
@@ -22,7 +24,7 @@ def all_sums(weights, subtract=None):
     sum_lists = [[0]]
     i = 1
     for weight in weights:
-        print(f'Done weight {i}')
+        logging.debug(f'Done weight {i}')
         i += 1
         new_sums = []
         for prior_list in sum_lists:
@@ -111,10 +113,10 @@ def get_total_benefit(solution, step, lower, upper):
         return .0
     for (l, u), total_benefit in solution[step].items():
         if l <= lower < upper <= u:
-            print(f'At step {step}, queried interval ({lower}, {upper}); got total profit of interval ({l}, {u})')
+            logging.debug(f'At step {step}, queried interval ({lower}, {upper}); got total profit of interval ({l}, {u})')
             return total_benefit
-    print(f'At step {step}, queried interval ({lower}, {upper}) is not contained in any available interval')
-    print(solution[step].keys())
+    logging.debug(f'At step {step}, queried interval ({lower}, {upper}) is not contained in any available interval')
+    logging.debug(solution[step].keys())
     return None
 
 class Item:
@@ -138,50 +140,81 @@ def parse(file):
     if total_capacity is None: return None
     return total_capacity, knapsack_items
 
-knapsack_problem = parse(sys.stdin)
-if knapsack_problem is None:
-    print('Error parsing the knapsack instance')
-total_capacity = knapsack_problem[0]
-knapsack_items = knapsack_problem[1]
+def computeGcd(x, y):
+    while y:
+        x, y = y, x % y
+    return x
 
-knapsack_items.sort(key=lambda item: item.weight)
-weights = [item.weight for item in knapsack_items]
-profits = [item.profit for item in knapsack_items]
-# compute the relevant total_capacity intervals
-forward_sums = all_sums(weights, subtract=total_capacity)
-backward_sums = all_sums(weights[::-1])
-accumulated_forward_sums = accumulate(forward_sums)
-accumulated_backward_sums = accumulate(backward_sums, infinity=True)[::-1]
-print('The accumulated forward sums are')
-for step, sums_list in enumerate(accumulated_forward_sums):
-    print(f'Item {step+1}: {sums_list}')
-print()
-print('The accumulated backward sums are')
-for step, sums_list in enumerate(accumulated_backward_sums):
-    print(f'Item {step+1}: {sums_list}')
-print()
-budget_intervals_per_step = emptyness_check(accumulated_forward_sums, accumulated_backward_sums)
-print(f'The non-empty intervals are')
-for step, budget_intervals in enumerate(budget_intervals_per_step):
-    print(f'Item {step+1}: {budget_intervals}')
-print()
+def solve_knapsack(file):
+    knapsack_problem = parse(file)
+    if knapsack_problem is None:
+        logging.error('Could not parse the knapsack instance given through stdin')
+    total_capacity, knapsack_items = knapsack_problem
 
-num_items = len(knapsack_items)
-solution = [dict() for _ in range(num_items)]
-for step in range(num_items)[::-1]:
-    for lower_budget, upper_budget in budget_intervals_per_step[step]:
-        max_total_benefit = get_total_benefit(solution, step+1, lower_budget, upper_budget)
+    knapsack_items.sort(key=lambda item: item.weight)
+    weights = [item.weight for item in knapsack_items]
+    profits = [item.profit for item in knapsack_items]
 
-        weight = weights[step]
-        if weight <= lower_budget:
-            profit = profits[step]
-            one_total_benefit = profit \
-                + get_total_benefit(solution, step+1, lower_budget-weight, upper_budget-weight)
-            if one_total_benefit > max_total_benefit:
-                max_total_benefit = one_total_benefit
+    logging.debug('The weights are')
+    logging.debug(weights)
+    gcd = 0
+    for w in weights:
+        gcd = computeGcd(gcd, w)
+        logging.debug(f'The greatest common divisor is {gcd}')
+    logging.debug(f'The greatest common divisor of all weights is {gcd}')
+    exit()
 
-        solution[step][(lower_budget, upper_budget)] = max_total_benefit
+    # compute the relevant total_capacity intervals
+    forward_sums = all_sums(weights, subtract=total_capacity)
+    backward_sums = all_sums(weights[::-1])
+    accumulated_forward_sums = accumulate(forward_sums)
+    accumulated_backward_sums = accumulate(backward_sums, infinity=True)[::-1]
+    logging.debug('The accumulated forward sums are')
+    for step, sums_list in enumerate(accumulated_forward_sums):
+        logging.debug(f'Item {step+1}: {sums_list}')
+    logging.debug()
+    logging.debug('The accumulated backward sums are')
+    for step, sums_list in enumerate(accumulated_backward_sums):
+        logging.debug(f'Item {step+1}: {sums_list}')
+    logging.debug()
+    budget_intervals_per_step = emptyness_check(accumulated_forward_sums, accumulated_backward_sums)
+    logging.debug(f'The non-empty intervals are')
+    for step, budget_intervals in enumerate(budget_intervals_per_step):
+        logging.debug(f'Item {step+1}: {budget_intervals}')
+    logging.debug()
 
-print('The solution of the Knapsack problem is')
-for step, total_benefits in enumerate(solution):
-    print(f'Item {step+1}: {total_benefits}')
+    num_items = len(knapsack_items)
+    solution = [dict() for _ in range(num_items)]
+    for step in range(num_items)[::-1]:
+        for lower_budget, upper_budget in budget_intervals_per_step[step]:
+            max_total_benefit = get_total_benefit(solution, step+1, lower_budget, upper_budget)
+
+            weight = weights[step]
+            if weight <= lower_budget:
+                profit = profits[step]
+                one_total_benefit = profit \
+                    + get_total_benefit(solution, step+1, lower_budget-weight, upper_budget-weight)
+                if one_total_benefit > max_total_benefit:
+                    max_total_benefit = one_total_benefit
+
+            solution[step][(lower_budget, upper_budget)] = max_total_benefit
+
+    logging.debug('The solution of the Knapsack problem is')
+    for step, total_benefits in enumerate(solution):
+        logging.debug(f'Item {step+1}: {total_benefits}')
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--verbose', '-v', action='count')
+    args = parser.parse_args()
+
+    log_levels = {
+        None: logging.WARNING,
+        1: logging.INFO,
+        2: logging.DEBUG
+    }
+    if args.verbose is not None and args.verbose >= len(log_levels):
+        args.verbose = len(log_levels)-1
+    logging.basicConfig(format='%(message)s', level=log_levels[args.verbose])
+
+    solve_knapsack(sys.stdin)
