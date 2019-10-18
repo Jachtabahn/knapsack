@@ -3,83 +3,69 @@ import logging
 import argparse
 
 '''
-    If the 'subtract' argument is no given:
-    For a given list of weights, computes a list where the i-th element is an list containing
-    all the sums of the first i weights minus all the sums of the first i-1 weights. The i-th list contains
-    the new sums that including the i-th weight brings to the set of sums of the first i-1 weights.
+    Computes a list for a given list of numbers. This list has length len(numbers)+1. This list contains
+    lists of sums of elements of the given list. The very first sum list is the list of all sums of the first
+    zero elements of the given list, that is [0]. The second includes the first element a of the given list
+    and as such contains [0, a] and so on.
 
-    If a 'subtract' argument is given:
-    For a given list of weights, computes a list where the i-th element is an list containing
-    all the sums of the first i+1 weights minus all the sums of the first i weights. The i-th list contains
-    the new sums that including the (i+1)-th weight brings to the set of sums of the first i weights.
-    Except that the function subtracts every sum from 'subtract' and if the result is positive,
-    puts it in those lists instead, and if the difference is not positive, does not put
-    this difference in the list.
-
-    @param weights List of weights, positive numbers
-    @param subtract A number to subtract every number in the weights list from
-    @return list of lists where each list contains sums of weights as described above
+    @param numbers given list of numbers, whose partial sums are to be computed
+    @return list of partial sums of given list
 '''
-def all_sums(weights, subtract=None):
+def make_sum_combinations(numbers):
     sum_lists = [[0]]
-    for weight in weights:
-        new_sums = []
-        for prior_list in sum_lists:
-            for prior_sum in prior_list:
-                new_sum = weight + prior_sum
-                if new_sum not in sum(sum_lists, []):
-                    new_sums.append(new_sum)
-        sum_lists.append(new_sums)
-
-    # subtract everything from the given budget (for forward sums)
-    if subtract is not None:
-        del sum_lists[len(sum_lists)-1]
-        for sum_list in sum_lists:
-            for i in range(len(sum_list)):
-                sum_list[i] = subtract - sum_list[i]
-
-        # delete everything non-positive
-        for i in range(len(sum_lists)):
-            sum_lists[i] = [s for s in sum_lists[i] if s > 0]
-    else: del sum_lists[0]
-
+    w = 1
+    logging.debug(f'There are {len(numbers)} weights')
+    for number in numbers:
+        prior_sums = sum_lists[-1]
+        next_sums = list(prior_sums)
+        for prior_sum in prior_sums:
+            new_sum = number + prior_sum
+            if new_sum not in next_sums:
+                next_sums.append(new_sum)
+        sum_lists.append(next_sums)
+        logging.debug(f'Computed sums up to {w}th weight')
+        w += 1
     return sum_lists
 
-def compute_forward_sums(weights, subtract):
-    sum_lists = [[0]]
-    for weight in weights[:-1]:
-        new_sums = []
-        for prior_list in sum_lists:
-            for prior_sum in prior_list:
-                new_sum = weight + prior_sum
-                if new_sum not in sum(sum_lists, []):
-                    new_sums.append(new_sum)
-        sum_lists.append(new_sums)
+'''
+    Computes a list of all non-empty, partial sums of the first so-and-so-many weights,
+    going from left to right. The list of non-empty, partial sums of the first zero weights,
+    that is the empty list, is left out. Additionally, every computed list contains two additional elements:
+    the negative and positive infinity.
 
-    logging.debug('The sum lists are')
-    for step, sums_list in enumerate(sum_lists):
-        logging.debug(f'Item {step+1}: {sums_list}')
-    logging.debug('')
+    @param weights list of positive numbers
+    @return list of lists of partial sums
+'''
+def compute_backward_sums(weights):
+    sum_lists = make_sum_combinations(weights)
 
-    # subtract from the given budget every sum, and leave out those sums, that are too small
-    for list_index, sum_list in enumerate(sum_lists):
-        sum_lists[list_index] = [subtract - my_sum for my_sum in sum_list if subtract > my_sum]
+    del sum_lists[0]
+    for i in range(len(sum_lists)):
+        # around zero there is no change in the maximum total benefit
+        sum_lists[i].remove(0)
+
+        sum_lists[i].sort()
+        sum_lists[i].insert(0, -float('inf'))
+        sum_lists[i].append(float('inf'))
 
     return sum_lists
 
 '''
-    Takes a list of those new sums of weights, and transforms it to a list where each contained list additionally
-    contains all the element of its predecessors. Now the returned list contains ordered lists
-    where the i-th list contains all the sums of the first i weights. And if 'infinity' is given, also puts
-    the negative and positive infinity into each of those ordered lists.
+    Computes a list of all partial sums of the first so-and-so-many weights,
+    going from left to right. The list of partial sums of all weights is left out.
 
-    @my_list List with lists of numbers
-    @param infinity A boolean to indicate whether or not to include the negative and positive infinity
-    @return List of sorted lists where each list contains all the numbers of itself and predecessors
+    @param weights list of positive numbers
+    @return list of lists of partial sums
 '''
-def accumulate(my_list, infinity=False):
-    base_list = [-float('inf'), float('inf')] if infinity else []
-    return [sorted(sum(my_list[:i+1], base_list)) for i in range(len(my_list))]
+def compute_forward_sums(weights, knapsack_capacity):
+    sum_lists = make_sum_combinations(weights[:-1])
+
+    # subtract from the given capacity every sum, and leave out too big weight sums
+    for i, sum_list in enumerate(sum_lists):
+        sum_lists[i] = [knapsack_capacity - my_sum for my_sum in sum_list if knapsack_capacity >= my_sum]
+        sum_lists[i].sort()
+
+    return sum_lists
 
 '''
     Finds intervals from the second list, which contain at least one point from the first list.
@@ -180,8 +166,7 @@ def solve_knapsack(file):
 
     # sum up all combinations of the first so-and-so-many weights
     weights = [item.weight for item in knapsack_items]
-    forward_sums = compute_forward_sums(weights, subtract=total_capacity)
-    accumulated_forward_sums = accumulate(forward_sums)
+    accumulated_forward_sums = compute_forward_sums(weights, knapsack_capacity=total_capacity)
     logging.debug('The accumulated forward sums are')
     for step, sums_list in enumerate(accumulated_forward_sums):
         logging.debug(f'Item {step+1}: {sums_list}')
@@ -189,8 +174,7 @@ def solve_knapsack(file):
 
     # sum up all combinations of the last so-and-so-many weights
     # two subsequent weights form an interval
-    backward_sums = all_sums(weights[::-1])
-    accumulated_backward_sums = accumulate(backward_sums, infinity=True)[::-1]
+    accumulated_backward_sums = compute_backward_sums(weights[::-1])[::-1]
     logging.debug('The accumulated backward sums are')
     for step, sums_list in enumerate(accumulated_backward_sums):
         logging.debug(f'Item {step+1}: {sums_list}')
