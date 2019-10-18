@@ -23,7 +23,7 @@ def make_sum_combinations(numbers):
             if new_sum not in next_sums:
                 next_sums.append(new_sum)
         sum_lists.append(next_sums)
-        logging.debug(f'Computed sums up to {w}th weight')
+        logging.debug(f'Computed {len(next_sums)} sums up to {w}th weight')
         w += 1
     return sum_lists
 
