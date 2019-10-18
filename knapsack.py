@@ -22,10 +22,7 @@ import argparse
 '''
 def all_sums(weights, subtract=None):
     sum_lists = [[0]]
-    i = 1
     for weight in weights:
-        logging.debug(f'Done weight {i}')
-        i += 1
         new_sums = []
         for prior_list in sum_lists:
             for prior_sum in prior_list:
@@ -44,8 +41,29 @@ def all_sums(weights, subtract=None):
         # delete everything non-positive
         for i in range(len(sum_lists)):
             sum_lists[i] = [s for s in sum_lists[i] if s > 0]
-    else:
-        del sum_lists[0]
+    else: del sum_lists[0]
+
+    return sum_lists
+
+def compute_forward_sums(weights, subtract):
+    sum_lists = [[0]]
+    for weight in weights[:-1]:
+        new_sums = []
+        for prior_list in sum_lists:
+            for prior_sum in prior_list:
+                new_sum = weight + prior_sum
+                if new_sum not in sum(sum_lists, []):
+                    new_sums.append(new_sum)
+        sum_lists.append(new_sums)
+
+    logging.debug('The sum lists are')
+    for step, sums_list in enumerate(sum_lists):
+        logging.debug(f'Item {step+1}: {sums_list}')
+    logging.debug('')
+
+    # subtract from the given budget every sum, and leave out those sums, that are too small
+    for list_index, sum_list in enumerate(sum_lists):
+        sum_lists[list_index] = [subtract - my_sum for my_sum in sum_list if subtract > my_sum]
 
     return sum_lists
 
@@ -60,11 +78,11 @@ def all_sums(weights, subtract=None):
     @return List of sorted lists where each list contains all the numbers of itself and predecessors
 '''
 def accumulate(my_list, infinity=False):
-    base_list = [-float("inf"), float("inf")] if infinity else []
+    base_list = [-float('inf'), float('inf')] if infinity else []
     return [sorted(sum(my_list[:i+1], base_list)) for i in range(len(my_list))]
 
 '''
-    Finds intervals from the second list which contain at least one point from the first list.
+    Finds intervals from the second list, which contain at least one point from the first list.
 
     The first given list is interpreted as a list of 1-D scalars and the second as a list of intervals
     over 1-D scalars. In the second list, every two consective numbers a, b form an interval that fits
@@ -76,7 +94,7 @@ def accumulate(my_list, infinity=False):
     @param accumulated_backward The intervals
     @return list of pairs defining non-empty intervals from the second list
 '''
-def emptyness_check(accumulated_forward, accumulated_backward):
+def compute_relevant_intervals(accumulated_forward, accumulated_backward):
     all_intervals = []
     for step in range(len(accumulated_forward)):
         intervals = []
@@ -108,24 +126,31 @@ def emptyness_check(accumulated_forward, accumulated_backward):
     @param lower The lower boundary of the interval, whose sum of profits we want to know
     @param upper The upper boundary of the interval, whose sum of profits we want to know
 '''
-def get_total_benefit(solution, step, lower, upper):
-    if step >= len(solution):
-        return .0
-    for (l, u), total_benefit in solution[step].items():
+def get_total_profit(solution, step, lower, upper):
+    if step >= len(solution): return .0
+
+    for (l, u), total_profit in solution[step].items():
         if l <= lower < upper <= u:
             logging.debug(f'At step {step}, queried interval ({lower}, {upper}); got total profit of interval ({l}, {u})')
-            return total_benefit
+            return total_profit
     logging.debug(f'At step {step}, queried interval ({lower}, {upper}) is not contained in any available interval')
     logging.debug(solution[step].keys())
     return None
 
 class Item:
-
     def __init__(self, weight, profit):
         self.weight = weight
         self.profit = profit
 
-def parse(file):
+    def __str__(self):
+        return f'Weight {self.weight}, Profit {self.profit}'
+
+    def show_all(my_items):
+        for step, item in enumerate(my_items):
+            logging.info(f'Item {step+1}: {item}')
+        logging.info('')
+
+def parse_knapsack(file):
     total_capacity = None
     knapsack_items = []
     for line in file:
@@ -140,68 +165,94 @@ def parse(file):
     if total_capacity is None: return None
     return total_capacity, knapsack_items
 
-def computeGcd(x, y):
-    while y:
-        x, y = y, x % y
-    return x
-
 def solve_knapsack(file):
-    knapsack_problem = parse(file)
+    # parse the knapsack instance from given file
+    knapsack_problem = parse_knapsack(file)
     if knapsack_problem is None:
         logging.error('Could not parse the knapsack instance given through stdin')
+
+    # sort the weights ascendingly
     total_capacity, knapsack_items = knapsack_problem
-
     knapsack_items.sort(key=lambda item: item.weight)
+
+    logging.info(f'The Knapsack has total capacity {total_capacity}, and the following items are available:')
+    Item.show_all(knapsack_items)
+
+    # sum up all combinations of the first so-and-so-many weights
     weights = [item.weight for item in knapsack_items]
-    profits = [item.profit for item in knapsack_items]
-
-    logging.debug('The weights are')
-    logging.debug(weights)
-    gcd = 0
-    for w in weights:
-        gcd = computeGcd(gcd, w)
-        logging.debug(f'The greatest common divisor is {gcd}')
-    logging.debug(f'The greatest common divisor of all weights is {gcd}')
-    exit()
-
-    # compute the relevant total_capacity intervals
-    forward_sums = all_sums(weights, subtract=total_capacity)
-    backward_sums = all_sums(weights[::-1])
+    forward_sums = compute_forward_sums(weights, subtract=total_capacity)
     accumulated_forward_sums = accumulate(forward_sums)
-    accumulated_backward_sums = accumulate(backward_sums, infinity=True)[::-1]
     logging.debug('The accumulated forward sums are')
     for step, sums_list in enumerate(accumulated_forward_sums):
         logging.debug(f'Item {step+1}: {sums_list}')
-    logging.debug()
+    logging.debug('')
+
+    # sum up all combinations of the last so-and-so-many weights
+    # two subsequent weights form an interval
+    backward_sums = all_sums(weights[::-1])
+    accumulated_backward_sums = accumulate(backward_sums, infinity=True)[::-1]
     logging.debug('The accumulated backward sums are')
     for step, sums_list in enumerate(accumulated_backward_sums):
         logging.debug(f'Item {step+1}: {sums_list}')
-    logging.debug()
-    budget_intervals_per_step = emptyness_check(accumulated_forward_sums, accumulated_backward_sums)
+    logging.debug('')
+
+    # determine all intervals, which contain at least one forward sum
+    # these are the relevant intervals, for which we will later compute maximum total benefits
+    budget_intervals_per_step = compute_relevant_intervals(accumulated_forward_sums, accumulated_backward_sums)
     logging.debug(f'The non-empty intervals are')
     for step, budget_intervals in enumerate(budget_intervals_per_step):
         logging.debug(f'Item {step+1}: {budget_intervals}')
-    logging.debug()
+    logging.debug('')
 
+    # compute maximum total benefits for every pair of item index and relevant interval
     num_items = len(knapsack_items)
     solution = [dict() for _ in range(num_items)]
+    profits = [item.profit for item in knapsack_items]
     for step in range(num_items)[::-1]:
         for lower_budget, upper_budget in budget_intervals_per_step[step]:
-            max_total_benefit = get_total_benefit(solution, step+1, lower_budget, upper_budget)
+            max_total_profit = get_total_profit(solution, step+1, lower_budget, upper_budget)
 
             weight = weights[step]
             if weight <= lower_budget:
                 profit = profits[step]
-                one_total_benefit = profit \
-                    + get_total_benefit(solution, step+1, lower_budget-weight, upper_budget-weight)
-                if one_total_benefit > max_total_benefit:
-                    max_total_benefit = one_total_benefit
+                one_total_profit = profit \
+                    + get_total_profit(solution, step+1, lower_budget-weight, upper_budget-weight)
+                if one_total_profit > max_total_profit:
+                    max_total_profit = one_total_profit
 
-            solution[step][(lower_budget, upper_budget)] = max_total_benefit
+            solution[step][(lower_budget, upper_budget)] = max_total_profit
 
-    logging.debug('The solution of the Knapsack problem is')
-    for step, total_benefits in enumerate(solution):
-        logging.debug(f'Item {step+1}: {total_benefits}')
+    logging.info('The solution table of the Knapsack instance:')
+    for step, total_profit in enumerate(solution):
+        logging.info(f'Item {step+1}: {total_profit}')
+    logging.info('')
+
+    # collect the items required to achieve the maximum total benefit
+    taking = []
+    cur_interval = list(list(solution[0].keys())[0])
+    for step in range(num_items):
+
+        # this is the total benefit, that we want to reach
+        max_total_profit = get_total_profit(solution, step, cur_interval[0], cur_interval[1])
+
+        # this is the total benefit, if we don't take this item
+        zero_total_profit = get_total_profit(solution, step+1, cur_interval[0], cur_interval[1])
+        if max_total_profit <= zero_total_profit:
+            continue
+
+        # take the current item
+        taking.append(step)
+        weight = weights[step]
+        cur_interval = (cur_interval[0]-weight, cur_interval[1]-weight)
+
+    taken_items = [knapsack_items[step] for step in taking]
+    taken_weight = sum([item.weight for item in taken_items])
+    taken_profit = sum([item.profit for item in taken_items])
+    logging.info(f'I pack the following {len(taken_items)} items of total weight {taken_weight} '
+        + f'and total profit {taken_profit} in my Knapsack:')
+    for step in taking:
+        item = knapsack_items[step]
+        logging.info(f'Item {step+1}: {item}')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
