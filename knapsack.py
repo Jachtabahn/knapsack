@@ -141,6 +141,8 @@ def parse_knapsack(file):
     knapsack_items = []
     for line in file:
         info = line.split(' ')
+        if info[0] == 'c':
+            continue
         if info[0] == 't':
             total_capacity = int(info[1])
         else:
