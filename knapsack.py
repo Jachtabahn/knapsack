@@ -145,10 +145,13 @@ def parse_knapsack(file):
         if info[0] == 'c':
             continue
         if info[0] == 't':
-            total_capacity = int(info[1])
+            try: capacity = int(info[1])
+            except: capacity = float(info[1])
         else:
-            weight = int(info[0])
-            profit = int(info[1])
+            try: weight = int(info[0])
+            except: weight = float(info[0])
+            try: profit = int(info[1])
+            except: profit = float(info[1])
             item = Item(weight, profit)
             knapsack_items.append(item)
     if total_capacity is None: return None
