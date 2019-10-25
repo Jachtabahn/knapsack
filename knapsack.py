@@ -115,8 +115,9 @@ def compute_relevant_intervals(accumulated_forward, accumulated_backward):
 def get_total_profit(solution, step, lower, upper):
     if step >= len(solution): return .0
 
+    epsilon = 1e-8
     for (l, u), total_profit in solution[step].items():
-        if l <= lower < upper <= u:
+        if -epsilon + l <= lower < upper <= u + epsilon:
             logging.debug(f'At step {step}, queried interval ({lower}, {upper}); got total profit of interval ({l}, {u})')
             return total_profit
     logging.debug(f'At step {step}, queried interval ({lower}, {upper}) is not contained in any available interval')
