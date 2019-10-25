@@ -157,7 +157,7 @@ def parse_knapsack(file):
     if total_capacity is None: return None
     return total_capacity, knapsack_items
 
-def solve_knapsack(file):
+def solve_knapsack(file, shift):
     # parse the knapsack instance from given file
     knapsack_problem = parse_knapsack(file)
     if knapsack_problem is None:
@@ -165,6 +165,13 @@ def solve_knapsack(file):
 
     # sort the weights ascendingly
     total_capacity, knapsack_items = knapsack_problem
+
+    # if desired, remove some details from the weights
+    if shift > 1:
+        for item in knapsack_items:
+            item.weight = int(item.weight/shift)
+        capacity = int(capacity/shift)
+
     knapsack_items.sort(key=lambda item: item.weight)
 
     logging.info(f'The Knapsack has total capacity {total_capacity}, and the following items are available:')
@@ -246,6 +253,7 @@ def solve_knapsack(file):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('--shift', '-s', type=int, default=1)
     parser.add_argument('--verbose', '-v', action='count')
     args = parser.parse_args()
 
@@ -258,4 +266,4 @@ if __name__ == '__main__':
         args.verbose = len(log_levels)-1
     logging.basicConfig(format='%(message)s', level=log_levels[args.verbose])
 
-    solve_knapsack(sys.stdin)
+    solve_knapsack(sys.stdin, args.shift)
