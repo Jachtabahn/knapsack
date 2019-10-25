@@ -138,7 +138,7 @@ class Item:
         logging.info('')
 
 def parse_knapsack(file):
-    total_capacity = None
+    capacity = None
     knapsack_items = []
     for line in file:
         info = line.split(' ')
@@ -154,8 +154,8 @@ def parse_knapsack(file):
             except: profit = float(info[1])
             item = Item(weight, profit)
             knapsack_items.append(item)
-    if total_capacity is None: return None
-    return total_capacity, knapsack_items
+    if capacity is None: return None
+    return capacity, knapsack_items
 
 def solve_knapsack(file, shift):
     # parse the knapsack instance from given file
@@ -164,7 +164,7 @@ def solve_knapsack(file, shift):
         logging.error('Could not parse the knapsack instance given through stdin')
 
     # sort the weights ascendingly
-    total_capacity, knapsack_items = knapsack_problem
+    capacity, knapsack_items = knapsack_problem
 
     # if desired, remove some details from the weights
     if shift > 1:
@@ -174,12 +174,12 @@ def solve_knapsack(file, shift):
 
     knapsack_items.sort(key=lambda item: item.weight)
 
-    logging.info(f'The Knapsack has total capacity {total_capacity}, and the following items are available:')
+    logging.info(f'The Knapsack has total capacity {capacity}, and the following items are available:')
     Item.show_all(knapsack_items)
 
     # sum up all combinations of the first so-and-so-many weights
     weights = [item.weight for item in knapsack_items]
-    accumulated_forward_sums = compute_forward_sums(weights, knapsack_capacity=total_capacity)
+    accumulated_forward_sums = compute_forward_sums(weights, knapsack_capacity=capacity)
     logging.debug('The accumulated forward sums are')
     for step, sums_list in enumerate(accumulated_forward_sums):
         logging.debug(f'Item {step+1}: {sums_list}')
