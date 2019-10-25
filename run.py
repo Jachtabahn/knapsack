@@ -17,8 +17,8 @@ def measure_runtime(command_dir, command_list, input_filepath, index, amount, of
                 check=True,
                 stderr=subprocess.PIPE)
         except Exception as e:
-            print(f'Solver process executed abnormally! Skipping graph {input_filepath}.')
-            print(e)
+            logging.error(f'Solver process executed abnormally! Skipping {input_filepath}.')
+            logging.error(e)
             return None
         runtime = time.time() - start
         runtimes.append(runtime)
