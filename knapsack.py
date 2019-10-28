@@ -157,6 +157,26 @@ def parse_knapsack(file):
     if capacity is None: return None
     return capacity, knapsack_items
 
+def find_boundaries(w, base):
+    digits = []
+    right = None
+    left = 0
+    remain = w % base
+    digits.append(remain)
+    if remain > 0:
+        right = 0
+    smaller = int(w / base)
+    while smaller > 0:
+        left += 1
+        remain = smaller % base
+        digits.append(remain)
+        if right is None and remain > 0:
+            right = left
+        smaller = int(smaller / base)
+    if right is None:
+        return None
+    return right, left, digits
+
 def solve_knapsack(file, shift_base):
     # parse the knapsack instance from given file
     knapsack_problem = parse_knapsack(file)
@@ -205,6 +225,18 @@ def solve_knapsack(file, shift_base):
 
     # sum up all combinations of the first so-and-so-many weights
     weights = [item.weight for item in knapsack_items]
+
+    for step, item in enumerate(knapsack_items):
+        right, left, digits = find_boundaries(item.weight, shift_base)
+        strings_list = [' ']*16
+        for i in range(right, left+1):
+            strings_list[i] = str(digits[i])
+        number_string = '-'.join(strings_list[::-1])
+        number_string = '|' + number_string + '|'
+        logging.info(f'Item {step+1}: {digits}')
+        logging.info(f'Item {step+1}: {number_string}')
+        logging.info('')
+
     accumulated_forward_sums = compute_forward_sums(weights, knapsack_capacity=capacity)
     logging.debug('The accumulated forward sums are')
     for step, sums_list in enumerate(accumulated_forward_sums):
