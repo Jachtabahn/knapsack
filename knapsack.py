@@ -172,6 +172,25 @@ def solve_knapsack(file, shift):
             item.weight = int(item.weight/shift)
         capacity = int(capacity/shift)
 
+
+    # remove the zero-profit items
+    zero_profit = [i for i in range(len(knapsack_items)) if knapsack_items[i].profit == 0]
+    for i in sorted(zero_profit, reverse=True): 
+        # it is important to have the indices sorted, otherwise the wrong items will be removed
+        logging.debug(f'Removing the zero-profit item with {knapsack_items[i]}')
+        del knapsack_items[i]
+
+    # lay aside the zero-weight items, and later in every case include them in the knapsack
+    zero_weight = [i for i in range(len(knapsack_items)) if knapsack_items[i].weight == 0]
+    cheap_items = []
+    for i in sorted(zero_weight, reverse=True): 
+        # it is important to have the indices sorted, otherwise the wrong items will be looked at
+        cheap = knapsack_items[i]
+        logging.debug(f'Laying aside zero-weight item with {cheap}')
+        del knapsack_items[i]
+        cheap_items.append(cheap)
+
+    # sort the weights ascendingly, otherwise the intervals will not be computed correctly
     knapsack_items.sort(key=lambda item: item.weight)
 
     logging.info(f'The Knapsack has total capacity {capacity}, and the following items are available:')
@@ -242,7 +261,8 @@ def solve_knapsack(file, shift):
         weight = weights[step]
         cur_interval = (cur_interval[0]-weight, cur_interval[1]-weight)
 
-    taken_items = [knapsack_items[step] for step in taking]
+    # always take the zero-weight items
+    taken_items = [knapsack_items[step] for step in taking] + cheap_items
     taken_weight = sum([item.weight for item in taken_items])
     taken_profit = sum([item.profit for item in taken_items])
     logging.info(f'I pack the following {len(taken_items)} items of total weight {taken_weight} '
