@@ -134,7 +134,7 @@ class Item:
 
     def show_all(my_items):
         for step, item in enumerate(my_items):
-            logging.info(f'Item {step+1}: {item}')
+            logging.info('Item {:4d}: {}'.format(step+1, item))
         logging.info('')
 
 def parse_knapsack(file):
@@ -157,25 +157,32 @@ def parse_knapsack(file):
     if capacity is None: return None
     return capacity, knapsack_items
 
-def find_boundaries(w, base):
-    digits = []
-    right = None
-    left = 0
-    remain = w % base
-    digits.append(remain)
-    if remain > 0:
-        right = 0
-    smaller = int(w / base)
+def sparse_number(dense, base):
+    sparse = dict()
+    i = 0
+    smaller = dense
+
+    # preprocess the number, so we also include sparse after the comma
+    after_comma = smaller - int(smaller)
+    while after_comma > 0:
+        i -= 1
+        smaller *= base
+        after_comma = smaller - int(smaller)
+
+    smaller = int(smaller)
     while smaller > 0:
-        left += 1
         remain = smaller % base
-        digits.append(remain)
-        if right is None and remain > 0:
-            right = left
+        if remain > 0:
+            sparse[i] = remain
         smaller = int(smaller / base)
-    if right is None:
-        return None
-    return right, left, digits
+        i += 1
+    return sparse
+
+def dense_number(sparse, base):
+    dense = 0
+    for i, digit in sparse.items():
+        dense += digit * (base**i)
+    return dense
 
 def solve_knapsack(file, shift_base):
     # parse the knapsack instance from given file
@@ -227,14 +234,17 @@ def solve_knapsack(file, shift_base):
     weights = [item.weight for item in knapsack_items]
 
     for step, item in enumerate(knapsack_items):
-        right, left, digits = find_boundaries(item.weight, shift_base)
+        digits = sparse_number(item.weight, shift_base)
         strings_list = [' ']*16
+        right = min(digits.keys())
+        left = max(digits.keys())
         for i in range(right, left+1):
-            strings_list[i] = str(digits[i])
+            digit = digits[i] if i in digits else 0
+            strings_list[i] = str(digit)
         number_string = '-'.join(strings_list[::-1])
         number_string = '|' + number_string + '|'
-        logging.info(f'Item {step+1}: {digits}')
-        logging.info(f'Item {step+1}: {number_string}')
+        logging.info('Item {:4d}: {}'.format(step+1, digits))
+        logging.info('Item {:4d}: {}'.format(step+1, number_string))
         logging.info('')
 
     accumulated_forward_sums = compute_forward_sums(weights, knapsack_capacity=capacity)
