@@ -171,15 +171,14 @@ def solve_knapsack(file, shift_base):
         for item in knapsack_items:
             if type(item.weight) == int:
                 remain = item.weight % shift_base
-                item.weight = int(item.weight / shift_base)
+                item.weight = int(item.weight / shift_base) * shift_base
                 if remain >= half_base:
                     item.weight += shift_base
         if type(capacity) == int:
             remain = capacity % shift_base
-            capacity = int(capacity / shift_base)
+            capacity = int(capacity / shift_base) * shift_base
             if remain >= half_base:
                 capacity += shift_base
-            capacity = int(capacity / shift_base)
 
     # remove the zero-profit items
     zero_profit = [i for i in range(len(knapsack_items)) if knapsack_items[i].profit == 0]
