@@ -157,21 +157,29 @@ def parse_knapsack(file):
     if capacity is None: return None
     return capacity, knapsack_items
 
-def solve_knapsack(file, shift):
+def solve_knapsack(file, shift_base):
     # parse the knapsack instance from given file
     knapsack_problem = parse_knapsack(file)
     if knapsack_problem is None:
         logging.error('Could not parse the knapsack instance given through stdin')
 
-    # sort the weights ascendingly
     capacity, knapsack_items = knapsack_problem
 
     # if desired, remove some details from the weights
-    if shift > 1:
+    half_base = int(shift_base / 2)
+    if shift_base > 1:
         for item in knapsack_items:
-            item.weight = int(item.weight/shift)
-        capacity = int(capacity/shift)
-
+            if type(item.weight) == int:
+                remain = item.weight % shift_base
+                item.weight = int(item.weight / shift_base)
+                if remain >= half_base:
+                    item.weight += shift_base
+        if type(capacity) == int:
+            remain = capacity % shift_base
+            capacity = int(capacity / shift_base)
+            if remain >= half_base:
+                capacity += shift_base
+            capacity = int(capacity / shift_base)
 
     # remove the zero-profit items
     zero_profit = [i for i in range(len(knapsack_items)) if knapsack_items[i].profit == 0]
