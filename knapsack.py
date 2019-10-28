@@ -127,6 +127,8 @@ def get_total_profit(solution, step, lower, upper):
 class Item:
     def __init__(self, weight, profit):
         self.weight = weight
+        self.simplified_weight = weight
+        self.sparse_weight = None
         self.profit = profit
 
     def __str__(self):
@@ -198,9 +200,9 @@ def solve_knapsack(file, shift_base):
         for item in knapsack_items:
             if type(item.weight) == int:
                 remain = item.weight % shift_base
-                item.weight = int(item.weight / shift_base) * shift_base
+                item.simplified_weight = int(item.weight / shift_base) * shift_base
                 if remain >= half_base:
-                    item.weight += shift_base
+                    item.simplified_weight += shift_base
         if type(capacity) == int:
             remain = capacity % shift_base
             capacity = int(capacity / shift_base) * shift_base
@@ -246,6 +248,7 @@ def solve_knapsack(file, shift_base):
         logging.info('Item {:4d}: {}'.format(step+1, digits))
         logging.info('Item {:4d}: {}'.format(step+1, number_string))
         logging.info('')
+    weights = [item.simplified_weight for item in knapsack_items]
 
     accumulated_forward_sums = compute_forward_sums(weights, knapsack_capacity=capacity)
     logging.debug('The accumulated forward sums are')
