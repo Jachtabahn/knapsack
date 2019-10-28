@@ -194,6 +194,11 @@ def solve_knapsack(file, shift_base):
 
     capacity, knapsack_items = knapsack_problem
 
+    # compute for all weights their sparse representations according to given base
+    if shift_base > 1:
+        for item in knapsack_items:
+            item.sparse_weight = sparse_number(item.weight, shift_base)
+
     # if desired, remove some details from the weights
     half_base = int(shift_base / 2)
     if shift_base > 1:
@@ -233,22 +238,22 @@ def solve_knapsack(file, shift_base):
     Item.show_all(knapsack_items)
 
     # sum up all combinations of the first so-and-so-many weights
-    weights = [item.weight for item in knapsack_items]
-
-    for step, item in enumerate(knapsack_items):
-        digits = sparse_number(item.weight, shift_base)
-        strings_list = [' ']*16
-        right = min(digits.keys())
-        left = max(digits.keys())
-        for i in range(right, left+1):
-            digit = digits[i] if i in digits else 0
-            strings_list[i] = str(digit)
-        number_string = '-'.join(strings_list[::-1])
-        number_string = '|' + number_string + '|'
-        logging.info('Item {:4d}: {}'.format(step+1, digits))
-        logging.info('Item {:4d}: {}'.format(step+1, number_string))
-        logging.info('')
     weights = [item.simplified_weight for item in knapsack_items]
+
+    if shift_base > 1:
+        for step, item in enumerate(knapsack_items):
+            digits = sparse_number(item.weight, shift_base)
+            strings_list = [' ']*16
+            right = min(digits.keys())
+            left = max(digits.keys())
+            for i in range(right, left+1):
+                digit = digits[i] if i in digits else 0
+                strings_list[i] = str(digit)
+            number_string = '-'.join(strings_list[::-1])
+            number_string = '|' + number_string + '|'
+            logging.info('Item {:4d}: {}'.format(step+1, digits))
+            logging.info('Item {:4d}: {}'.format(step+1, number_string))
+            logging.info('')
 
     accumulated_forward_sums = compute_forward_sums(weights, knapsack_capacity=capacity)
     logging.debug('The accumulated forward sums are')
