@@ -356,3 +356,21 @@ if __name__ == '__main__':
         logging.warning('Knapsack problem solved incorrectly with the modulo, solving again without it..')
         taken_profit, used_capacity, taken_items = solve_knapsack((capacity, taken_items))
     taken_time = time.time() - start_time
+
+    sys.stdout.write(f'p {taken_profit}\n')
+    knapsack_items = knapsack_problem[1]
+    all_ids = [item.id for item in knapsack_items]
+    taken_ids = [item.id for item in taken_items]
+    for item_id in sorted(all_ids):
+        if item_id in taken_ids:
+            sys.stdout.write('1\n')
+        else:
+            sys.stdout.write('0\n')
+
+    if args.info is not None:
+        info = {
+            'runtime': taken_time,
+            'total_profit': taken_profit
+        }
+        with open(args.info, 'w') as f:
+            f.write(json.dumps(info, indent=4))
