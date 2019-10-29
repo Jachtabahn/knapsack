@@ -344,3 +344,15 @@ if __name__ == '__main__':
     logging.basicConfig(format='%(message)s', level=log_levels[args.verbose])
 
     solve_knapsack(sys.stdin, args.shift)
+    # parse the knapsack instance from given file
+    start_time = time.time()
+    knapsack_problem = parse_knapsack(sys.stdin)
+    if knapsack_problem is None:
+        logging.error('Could not parse the knapsack instance given through stdin')
+        exit(1)
+    capacity = knapsack_problem[0]
+    taken_profit, used_capacity, taken_items = solve_knapsack(knapsack_problem, args.shift, args.exponents)
+    if used_capacity > capacity:
+        logging.warning('Knapsack problem solved incorrectly with the modulo, solving again without it..')
+        taken_profit, used_capacity, taken_items = solve_knapsack((capacity, taken_items))
+    taken_time = time.time() - start_time
