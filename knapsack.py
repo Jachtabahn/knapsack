@@ -186,33 +186,48 @@ def dense_number(sparse, base):
         dense += digit * (base**i)
     return dense
 
-def solve_knapsack(file, shift_base):
-    # parse the knapsack instance from given file
-    knapsack_problem = parse_knapsack(file)
-    if knapsack_problem is None:
-        logging.error('Could not parse the knapsack instance given through stdin')
+def increment(sparse, exponent, base):
+    if exponent not in sparse:
+        sparse[exponent] = 1
+    elif sparse[exponent] < base - 1:
+        sparse[exponent] += 1
+    else:
+        del sparse[exponent]
+        increment(sparse, exponent + 1, base)
 
+def pop(key, dictionary, default=0):
+    if key not in dictionary:
+        return default
+    else:
+        value = dictionary[key]
+        del dictionary[key]
+        return value
+
+def solve_knapsack(knapsack_problem, shift_base=1, removable_exponents=[]):
     capacity, knapsack_items = knapsack_problem
 
-    # compute for all weights their sparse representations according to given base
     if shift_base > 1:
         for item in knapsack_items:
             item.sparse_weight = sparse_number(item.weight, shift_base)
 
     # if desired, remove some details from the weights
     half_base = int(shift_base / 2)
+    half_base = int(shift_base / 2) + 1
     if shift_base > 1:
+        # remove details from weights
         for item in knapsack_items:
-            if type(item.weight) == int:
-                remain = item.weight % shift_base
-                item.simplified_weight = int(item.weight / shift_base) * shift_base
-                if remain >= half_base:
-                    item.simplified_weight += shift_base
-        if type(capacity) == int:
-            remain = capacity % shift_base
-            capacity = int(capacity / shift_base) * shift_base
-            if remain >= half_base:
-                capacity += shift_base
+            sparse_weight = sparse_number(item.weight, shift_base)
+            item.sparse_weight = sparse_weight # save this sparse representation for later
+
+            # round only after deleting the most important exponent
+            exponent = removable_exponents[0]
+            digit = pop(exponent, sparse_weight)
+            if digit >= half_base:
+                increment(sparse_weight, exponent + 1, shift_base)
+            for exponent in removable_exponents[1:]:
+                digit = pop(exponent, sparse_weight)
+
+            item.clean_weight = dense_number(sparse_weight, shift_base)
 
     # remove the zero-profit items
     zero_profit = [i for i in range(len(knapsack_items)) if knapsack_items[i].profit == 0]
