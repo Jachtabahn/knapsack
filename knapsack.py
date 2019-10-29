@@ -1,4 +1,7 @@
 import sys
+import json
+from os import path
+import time
 import logging
 import argparse
 
@@ -14,7 +17,7 @@ import argparse
 def make_sum_combinations(numbers):
     sum_lists = [[0]]
     w = 1
-    logging.debug(f'There are {len(numbers)} weights')
+    logging.debug(f'There are {len(numbers)} numbers to make sums of')
     for number in numbers:
         prior_sums = sum_lists[-1]
         next_sums = list(prior_sums)
@@ -23,7 +26,7 @@ def make_sum_combinations(numbers):
             if new_sum not in next_sums:
                 next_sums.append(new_sum)
         sum_lists.append(next_sums)
-        logging.debug(f'Computed {len(next_sums)} sums up to {w}th weight')
+        logging.debug(f'Computed {len(next_sums)} sums up to {w}th number')
         w += 1
     return sum_lists
 
@@ -125,23 +128,25 @@ def get_total_profit(solution, step, lower, upper):
     return None
 
 class Item:
-    def __init__(self, weight, profit):
+    def __init__(self, index, weight, profit):
+        self.id = index
         self.weight = weight
-        self.simplified_weight = weight
+        self.clean_weight = weight
         self.sparse_weight = None
         self.profit = profit
 
     def __str__(self):
-        return f'Weight {self.weight}, Profit {self.profit}'
+        return f'Real weight {self.weight}, Clean weight {self.clean_weight}, Profit {self.profit}'
 
     def show_all(my_items):
-        for step, item in enumerate(my_items):
-            logging.info('Item {:4d}: {}'.format(step+1, item))
+        for item in my_items:
+            logging.info('Item {:4d}: {}'.format(item.id, item))
         logging.info('')
 
 def parse_knapsack(file):
     capacity = None
     knapsack_items = []
+    index = 1
     for line in file:
         info = line.split(' ')
         if info[0] == 'c':
@@ -154,8 +159,9 @@ def parse_knapsack(file):
             except: weight = float(info[0])
             try: profit = int(info[1])
             except: profit = float(info[1])
-            item = Item(weight, profit)
+            item = Item(index, weight, profit)
             knapsack_items.append(item)
+        index += 1
     if capacity is None: return None
     return capacity, knapsack_items
 
@@ -206,12 +212,12 @@ def pop(key, dictionary, default=0):
 def solve_knapsack(knapsack_problem, shift_base=1, removable_exponents=[]):
     capacity, knapsack_items = knapsack_problem
 
-    if shift_base > 1:
-        for item in knapsack_items:
-            item.sparse_weight = sparse_number(item.weight, shift_base)
+    for step, item in enumerate(knapsack_items):
+        item.clean_weight = item.weight
+        item.sparse_weight = None
 
-    # if desired, remove some details from the weights
-    half_base = int(shift_base / 2)
+    # remove details from the weights and capacity
+    removable_exponents.sort(reverse=True)
     half_base = int(shift_base / 2) + 1
     if shift_base > 1:
         # remove details from weights
@@ -231,33 +237,33 @@ def solve_knapsack(knapsack_problem, shift_base=1, removable_exponents=[]):
 
     # remove the zero-profit items
     zero_profit = [i for i in range(len(knapsack_items)) if knapsack_items[i].profit == 0]
-    for i in sorted(zero_profit, reverse=True): 
+    for i in sorted(zero_profit, reverse=True):
         # it is important to have the indices sorted, otherwise the wrong items will be removed
-        logging.debug(f'Removing the zero-profit item with {knapsack_items[i]}')
+        logging.debug(f'Removing the zero-profit {i}th item with {knapsack_items[i]}')
         del knapsack_items[i]
 
     # lay aside the zero-weight items, and later in every case include them in the knapsack
-    zero_weight = [i for i in range(len(knapsack_items)) if knapsack_items[i].weight == 0]
+    zero_weight = [i for i in range(len(knapsack_items)) if knapsack_items[i].clean_weight == 0]
     cheap_items = []
-    for i in sorted(zero_weight, reverse=True): 
+    for i in sorted(zero_weight, reverse=True):
         # it is important to have the indices sorted, otherwise the wrong items will be looked at
         cheap = knapsack_items[i]
-        logging.debug(f'Laying aside zero-weight item with {cheap}')
+        logging.debug(f'Laying aside zero-weight {i}th item with {cheap}')
         del knapsack_items[i]
         cheap_items.append(cheap)
 
     # sort the weights ascendingly, otherwise the intervals will not be computed correctly
-    knapsack_items.sort(key=lambda item: item.weight)
+    knapsack_items.sort(key=lambda item: item.clean_weight)
 
     logging.info(f'The Knapsack has total capacity {capacity}, and the following items are available:')
     Item.show_all(knapsack_items)
 
     # sum up all combinations of the first so-and-so-many weights
-    weights = [item.simplified_weight for item in knapsack_items]
+    weights = [item.clean_weight for item in knapsack_items]
 
     if shift_base > 1:
-        for step, item in enumerate(knapsack_items):
-            digits = sparse_number(item.weight, shift_base)
+        for item in knapsack_items:
+            digits = item.sparse_weight
             strings_list = [' ']*16
             right = min(digits.keys())
             left = max(digits.keys())
@@ -266,14 +272,15 @@ def solve_knapsack(knapsack_problem, shift_base=1, removable_exponents=[]):
                 strings_list[i] = str(digit)
             number_string = '-'.join(strings_list[::-1])
             number_string = '|' + number_string + '|'
-            logging.info('Item {:4d}: {}'.format(step+1, digits))
-            logging.info('Item {:4d}: {}'.format(step+1, number_string))
+            logging.info('Item {:4d}: {}'.format(item.id, digits))
+            logging.info('Item {:4d}: {}'.format(item.id, number_string))
             logging.info('')
 
     accumulated_forward_sums = compute_forward_sums(weights, knapsack_capacity=capacity)
     logging.debug('The accumulated forward sums are')
     for step, sums_list in enumerate(accumulated_forward_sums):
-        logging.debug(f'Item {step+1}: {sums_list}')
+        item = knapsack_items[step]
+        logging.debug(f'Item {item.id}: {sums_list}')
     logging.debug('')
 
     # sum up all combinations of the last so-and-so-many weights
@@ -281,7 +288,8 @@ def solve_knapsack(knapsack_problem, shift_base=1, removable_exponents=[]):
     accumulated_backward_sums = compute_backward_sums(weights[::-1])[::-1]
     logging.debug('The accumulated backward sums are')
     for step, sums_list in enumerate(accumulated_backward_sums):
-        logging.debug(f'Item {step+1}: {sums_list}')
+        item = knapsack_items[step]
+        logging.debug(f'Item {item.id}: {sums_list}')
     logging.debug('')
 
     # determine all intervals, which contain at least one forward sum
@@ -289,7 +297,8 @@ def solve_knapsack(knapsack_problem, shift_base=1, removable_exponents=[]):
     budget_intervals_per_step = compute_relevant_intervals(accumulated_forward_sums, accumulated_backward_sums)
     logging.debug(f'The non-empty intervals are')
     for step, budget_intervals in enumerate(budget_intervals_per_step):
-        logging.debug(f'Item {step+1}: {budget_intervals}')
+        item = knapsack_items[step]
+        logging.debug(f'Item {item.id}: {budget_intervals}')
     logging.debug('')
 
     # compute maximum total benefits for every pair of item index and relevant interval
@@ -310,9 +319,10 @@ def solve_knapsack(knapsack_problem, shift_base=1, removable_exponents=[]):
 
             solution[step][(lower_budget, upper_budget)] = max_total_profit
 
-    logging.info('The solution table of the Knapsack instance:')
+    logging.info('Solution table of the Knapsack instance:')
     for step, total_profit in enumerate(solution):
-        logging.info(f'Item {step+1}: {total_profit}')
+        item = knapsack_items[step]
+        logging.info(f'Item {item.id}: {total_profit}')
     logging.info('')
 
     # collect the items required to achieve the maximum total benefit
@@ -337,17 +347,25 @@ def solve_knapsack(knapsack_problem, shift_base=1, removable_exponents=[]):
     taken_items = [knapsack_items[step] for step in taking] + cheap_items
     taken_weight = sum([item.weight for item in taken_items])
     taken_profit = sum([item.profit for item in taken_items])
-    logging.info(f'I pack the following {len(taken_items)} items of total weight {taken_weight} '
-        + f'and total profit {taken_profit} in my Knapsack:')
+    logging.info(f'Pack following {len(taken_items)} items of total real weight {taken_weight} '
+        + f'and total profit {taken_profit} in the Knapsack:')
     for step in taking:
         item = knapsack_items[step]
-        logging.info(f'Item {step+1}: {item}')
+        logging.info(f'Item {item.id}: {item}')
+
+    return taken_profit, taken_weight, taken_items
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--shift', '-s', type=int, default=1)
+    parser.add_argument('--info', type=str, default=None)
+    parser.add_argument('--exponents', '-e', type=int, action='append', default=[])
     parser.add_argument('--verbose', '-v', action='count')
     args = parser.parse_args()
+
+    if args.shift <= 1:
+        logging.error('Modulo must be greater than 1!')
+        exit(1)
 
     log_levels = {
         None: logging.WARNING,
@@ -358,7 +376,6 @@ if __name__ == '__main__':
         args.verbose = len(log_levels)-1
     logging.basicConfig(format='%(message)s', level=log_levels[args.verbose])
 
-    solve_knapsack(sys.stdin, args.shift)
     # parse the knapsack instance from given file
     start_time = time.time()
     knapsack_problem = parse_knapsack(sys.stdin)
