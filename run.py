@@ -1,4 +1,6 @@
 import subprocess
+from os import path
+import json
 import time
 import argparse
 import logging
@@ -44,5 +46,23 @@ if __name__ == '__main__':
         args.verbose = len(log_levels)-1
     logging.basicConfig(format='%(message)s', level=log_levels[args.verbose])
 
+    try:
+        with open('info.json') as f:
+            info = json.load(f)
+    except:
+        info = {}
+
     for index, filepath in enumerate(args.input_paths):
         runtimes = measure_runtime('.', args.command.split(), filepath, index+1, len(args.input_paths), args.often)
+
+        _, basename = path.split(filepath)
+        dot_index = basename.rfind('.')
+        basename = basename[:dot_index]
+        if basename not in info:
+            info[basename] = {}
+        if 'runtimes' not in info[basename]:
+            info[basename]['runtimes'] = []
+        info[basename]['runtimes'].extend(runtimes)
+
+    with open('info.json', 'w') as f:
+        f.write(json.dumps(info, indent=4))
