@@ -209,7 +209,7 @@ def pop(key, dictionary, default=0):
         del dictionary[key]
         return value
 
-def solve_knapsack(knapsack_problem, shift_base=1, removable_exponents=[]):
+def solve_knapsack(knapsack_problem, modulo=1, removable_exponents=[]):
     capacity, knapsack_items = knapsack_problem
 
     for step, item in enumerate(knapsack_items):
@@ -218,11 +218,11 @@ def solve_knapsack(knapsack_problem, shift_base=1, removable_exponents=[]):
 
     # remove details from the weights and capacity
     removable_exponents.sort(reverse=True)
-    half_base = int(shift_base / 2) + 1
-    if shift_base > 1:
+    half_base = int(modulo / 2) + 1
+    if modulo > 1:
         # remove details from weights
         for item in knapsack_items:
-            sparse_weight = sparse_number(item.weight, shift_base)
+            sparse_weight = sparse_number(item.weight, modulo)
             item.sparse_weight = sparse_weight # save this sparse representation for later
 
             # round only after deleting the most important exponent
@@ -230,11 +230,11 @@ def solve_knapsack(knapsack_problem, shift_base=1, removable_exponents=[]):
                 exponent = removable_exponents[0]
                 digit = pop(exponent, sparse_weight)
                 if digit >= half_base:
-                    increment(sparse_weight, exponent + 1, shift_base)
+                    increment(sparse_weight, exponent + 1, modulo)
                 for exponent in removable_exponents[1:]:
                     digit = pop(exponent, sparse_weight)
 
-            item.clean_weight = dense_number(sparse_weight, shift_base)
+            item.clean_weight = dense_number(sparse_weight, modulo)
 
     # remove the zero-profit items
     zero_profit = [i for i in range(len(knapsack_items)) if knapsack_items[i].profit == 0]
@@ -262,7 +262,7 @@ def solve_knapsack(knapsack_problem, shift_base=1, removable_exponents=[]):
     # sum up all combinations of the first so-and-so-many weights
     weights = [item.clean_weight for item in knapsack_items]
 
-    if shift_base > 1:
+    if modulo > 1:
         for item in knapsack_items:
             digits = item.sparse_weight
             strings_list = [' ']*16
@@ -358,15 +358,11 @@ def solve_knapsack(knapsack_problem, shift_base=1, removable_exponents=[]):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--shift', '-s', type=int, default=1)
+    parser.add_argument('--modulo', '-m', type=int, default=1)
     parser.add_argument('--info', type=str, default=None)
     parser.add_argument('--exponents', '-e', type=int, action='append', default=[])
     parser.add_argument('--verbose', '-v', action='count')
     args = parser.parse_args()
-
-    if args.shift <= 1:
-        logging.error('Modulo must be greater than 1!')
-        exit(1)
 
     log_levels = {
         None: logging.WARNING,
@@ -377,6 +373,10 @@ if __name__ == '__main__':
         args.verbose = len(log_levels)-1
     logging.basicConfig(format='%(message)s', level=log_levels[args.verbose])
 
+    if args.modulo < 1:
+        logging.error('Modulo must be at least 1!')
+        exit(1)
+
     # parse the knapsack instance from given file
     start_time = time.time()
     knapsack_problem = parse_knapsack(sys.stdin)
@@ -384,7 +384,7 @@ if __name__ == '__main__':
         logging.error('Could not parse the knapsack instance given through stdin')
         exit(1)
     capacity = knapsack_problem[0]
-    taken_profit, used_capacity, taken_items = solve_knapsack(knapsack_problem, args.shift, args.exponents)
+    taken_profit, used_capacity, taken_items = solve_knapsack(knapsack_problem, args.modulo, args.exponents)
     if used_capacity > capacity:
         logging.warning('Knapsack problem solved incorrectly with the modulo, solving again without it..')
         taken_profit, used_capacity, taken_items = solve_knapsack((capacity, taken_items))
