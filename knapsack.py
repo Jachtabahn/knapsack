@@ -54,23 +54,6 @@ def compute_backward_sums(weights):
     return sum_lists
 
 '''
-    Computes a list of all partial sums of the first so-and-so-many weights,
-    going from left to right. The list of partial sums of all weights is left out.
-
-    @param weights list of positive numbers
-    @return list of lists of partial sums
-'''
-def compute_forward_sums(weights, knapsack_capacity):
-    sum_lists = make_sum_combinations(weights[:-1])
-
-    # subtract from the given capacity every sum, and leave out too big weight sums
-    for i, sum_list in enumerate(sum_lists):
-        sum_lists[i] = [knapsack_capacity - my_sum for my_sum in sum_list if knapsack_capacity >= my_sum]
-        sum_lists[i].sort()
-
-    return sum_lists
-
-'''
     Finds intervals from the second list, which contain at least one point from the first list.
 
     The first given list is interpreted as a list of 1-D scalars and the second as a list of intervals
@@ -90,7 +73,8 @@ def compute_relevant_intervals(accumulated_backward, weights, capacity):
     for step in range(len(weights)):
         if step > 0:
             weight = weights[step-1]
-            for prior_sum in list(current_accumulated):
+            previous_length = len(current_accumulated)
+            for prior_sum in current_accumulated[:previous_length]:
                 new_sum = weight + prior_sum
                 if new_sum not in current_accumulated:
                     current_accumulated.append(new_sum)
