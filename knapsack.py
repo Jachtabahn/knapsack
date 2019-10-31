@@ -83,13 +83,24 @@ def compute_forward_sums(weights, knapsack_capacity):
     @param accumulated_backward The intervals
     @return list of pairs defining non-empty intervals from the second list
 '''
-def compute_relevant_intervals(accumulated_forward, accumulated_backward):
+def compute_relevant_intervals(accumulated_backward, weights, capacity):
     all_intervals = []
-    for step in range(len(accumulated_forward)):
+    current_accumulated = [0]
+    logging.debug(f'There are {len(weights)-1} numbers to make sums of')
+    for step in range(len(weights)):
+        if step > 0:
+            weight = weights[step-1]
+            for prior_sum in list(current_accumulated):
+                new_sum = weight + prior_sum
+                if new_sum not in current_accumulated:
+                    current_accumulated.append(new_sum)
+            logging.debug(f'Computed {len(current_accumulated)} sums up to {step}th number')
         intervals = []
-        for forward in accumulated_forward[step]:
+        for forward_sum in current_accumulated:
+            if capacity < forward_sum: continue
+            leftover_capacity = capacity - forward_sum
             for (lower, upper) in zip(accumulated_backward[step][:-1], accumulated_backward[step][1:]):
-                if lower <= forward < upper:
+                if lower <= leftover_capacity < upper:
                     if (lower, upper) not in intervals:
                         intervals.append((lower, upper))
         all_intervals.append(intervals)
@@ -277,13 +288,6 @@ def solve_knapsack(knapsack_problem, modulo=1, removable_exponents=[]):
             logging.info('Item {:4d}: {}'.format(item.id, number_string))
             logging.info('')
 
-    accumulated_forward_sums = compute_forward_sums(weights, knapsack_capacity=capacity)
-    logging.debug('The accumulated forward sums are')
-    for step, sums_list in enumerate(accumulated_forward_sums):
-        item = knapsack_items[step]
-        logging.debug(f'Item {item.id}: {sums_list}')
-    logging.debug('')
-
     # sum up all combinations of the last so-and-so-many weights
     # two subsequent weights form an interval
     accumulated_backward_sums = compute_backward_sums(weights[::-1])[::-1]
@@ -295,7 +299,7 @@ def solve_knapsack(knapsack_problem, modulo=1, removable_exponents=[]):
 
     # determine all intervals, which contain at least one forward sum
     # these are the relevant intervals, for which we will later compute maximum total benefits
-    budget_intervals_per_step = compute_relevant_intervals(accumulated_forward_sums, accumulated_backward_sums)
+    budget_intervals_per_step = compute_relevant_intervals(accumulated_backward_sums, weights, capacity)
     logging.debug(f'The non-empty intervals are')
     for step, budget_intervals in enumerate(budget_intervals_per_step):
         item = knapsack_items[step]
