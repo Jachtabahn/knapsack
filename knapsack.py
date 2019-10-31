@@ -226,12 +226,13 @@ def solve_knapsack(knapsack_problem, shift_base=1, removable_exponents=[]):
             item.sparse_weight = sparse_weight # save this sparse representation for later
 
             # round only after deleting the most important exponent
-            exponent = removable_exponents[0]
-            digit = pop(exponent, sparse_weight)
-            if digit >= half_base:
-                increment(sparse_weight, exponent + 1, shift_base)
-            for exponent in removable_exponents[1:]:
+            if removable_exponents:
+                exponent = removable_exponents[0]
                 digit = pop(exponent, sparse_weight)
+                if digit >= half_base:
+                    increment(sparse_weight, exponent + 1, shift_base)
+                for exponent in removable_exponents[1:]:
+                    digit = pop(exponent, sparse_weight)
 
             item.clean_weight = dense_number(sparse_weight, shift_base)
 
