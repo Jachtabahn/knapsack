@@ -68,21 +68,19 @@ def compute_backward_sums(weights):
 '''
 def compute_relevant_intervals(accumulated_backward, weights, capacity):
     all_intervals = []
-    current_accumulated = [0]
+    current_accumulated = [capacity]
     logging.debug(f'There are {len(weights)-1} numbers to make sums of')
     for step in range(len(weights)):
         if step > 0:
             weight = weights[step-1]
             previous_length = len(current_accumulated)
-            for prior_sum in current_accumulated[:previous_length]:
-                new_sum = weight + prior_sum
-                if new_sum not in current_accumulated:
-                    current_accumulated.append(new_sum)
+            for old_leftover in current_accumulated[:previous_length]:
+                new_leftover = old_leftover - weight
+                if new_leftover >= 0 and new_leftover not in current_accumulated:
+                    current_accumulated.append(new_leftover)
             logging.debug(f'Computed {len(current_accumulated)} sums up to {step}th number')
         intervals = []
-        for forward_sum in current_accumulated:
-            if capacity < forward_sum: continue
-            leftover_capacity = capacity - forward_sum
+        for leftover_capacity in current_accumulated:
             for (lower, upper) in zip(accumulated_backward[step][:-1], accumulated_backward[step][1:]):
                 if lower <= leftover_capacity < upper:
                     if (lower, upper) not in intervals:
