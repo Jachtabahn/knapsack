@@ -27,6 +27,7 @@ def make_sum_combinations(numbers):
                 next_sums.append(new_sum)
         sum_lists.append(next_sums)
         logging.debug(f'Computed {len(next_sums)} sums up to {w}th number')
+        logging.debug(f'The sums are\n{next_sums}')
         w += 1
     return sum_lists
 
@@ -79,6 +80,8 @@ def compute_relevant_intervals(accumulated_backward, weights, capacity):
                 if new_leftover >= 0 and new_leftover not in current_accumulated:
                     current_accumulated.append(new_leftover)
             logging.debug(f'Computed {len(current_accumulated)} sums up to {step}th number')
+            logging.debug(f'The capacity is {capacity}')
+            logging.debug(f'The sums are\n{current_accumulated}')
         intervals = []
         for leftover_capacity in current_accumulated:
             for (lower, upper) in zip(accumulated_backward[step][:-1], accumulated_backward[step][1:]):
@@ -129,7 +132,9 @@ class Item:
         self.profit = profit
 
     def __str__(self):
-        return f'Real weight {self.weight}, Clean weight {self.clean_weight}, Profit {self.profit}'
+        if self.clean_weight != self.weight:
+            return f'Real weight {self.weight}, Clean weight {self.clean_weight}, Profit {self.profit}'
+        return f'Real weight {self.weight}, Profit {self.profit}'
 
     def show_all(my_items):
         for item in my_items:
@@ -163,7 +168,7 @@ def sparse_number(dense, base):
     i = 0
     smaller = dense
 
-    # preprocess the number, so we also include sparse after the comma
+    # preprocess the number, so we also include the digits after the comma
     after_comma = smaller - int(smaller)
     while after_comma > 0:
         i -= 1
@@ -273,11 +278,11 @@ def solve_knapsack(knapsack_problem, modulo=1, removable_exponents=[]):
     # sum up all combinations of the last so-and-so-many weights
     # two subsequent weights form an interval
     accumulated_backward_sums = compute_backward_sums(weights[::-1])[::-1]
-    logging.debug('The accumulated backward sums are')
+    logging.info('The accumulated backward sums are')
     for step, sums_list in enumerate(accumulated_backward_sums):
         item = knapsack_items[step]
-        logging.debug(f'Item {item.id}: {sums_list}')
-    logging.debug('')
+        logging.info(f'Item {item.id}: {sums_list}')
+    logging.info('')
 
     # determine all intervals, which contain at least one forward sum
     # these are the relevant intervals, for which we will later compute maximum total benefits
@@ -306,11 +311,11 @@ def solve_knapsack(knapsack_problem, modulo=1, removable_exponents=[]):
 
             solution[step][(lower_budget, upper_budget)] = max_total_profit
 
-    logging.info('Solution table of the Knapsack instance:')
+    logging.debug('Solution table of the Knapsack instance:')
     for step, total_profit in enumerate(solution):
         item = knapsack_items[step]
-        logging.info(f'Item {item.id}: {total_profit}')
-    logging.info('')
+        logging.debug(f'Item {item.id}: {total_profit}')
+    logging.debug('')
 
     # collect the items required to achieve the maximum total benefit
     taking = []
@@ -332,8 +337,8 @@ def solve_knapsack(knapsack_problem, modulo=1, removable_exponents=[]):
 
     # always take the zero-weight items
     taken_items = [knapsack_items[step] for step in taking] + cheap_items
-    taken_weight = sum([item.weight for item in taken_items])
-    taken_profit = sum([item.profit for item in taken_items])
+    taken_weight = sum(item.weight for item in taken_items)
+    taken_profit = sum(item.profit for item in taken_items)
     logging.info(f'Pack following {len(taken_items)} items of total real weight {taken_weight} '
         + f'and total profit {taken_profit} in the Knapsack:')
     for step in taking:
@@ -345,7 +350,7 @@ def solve_knapsack(knapsack_problem, modulo=1, removable_exponents=[]):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--modulo', '-m', type=int, default=1)
-    parser.add_argument('--info', type=str, default=None)
+    parser.add_argument('--info', '-i', type=str, default=None)
     parser.add_argument('--exponents', '-e', type=int, action='append', default=[])
     parser.add_argument('--verbose', '-v', action='count')
     args = parser.parse_args()
