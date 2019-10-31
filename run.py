@@ -1,3 +1,4 @@
+import sys
 import subprocess
 from os import path
 import json
@@ -13,18 +14,17 @@ def measure_runtime(command_dir, command_list, input_filepath, index, amount, of
         logging.info(f'----------- #{index}/{amount} INPUT {input_filepath} -----------\n')
         start = time.time()
         try:
-            process = subprocess.run(command_list,
+            subprocess.run(command_list,
                 stdin=input_file,
                 cwd=command_dir,
                 check=True,
-                stderr=subprocess.PIPE)
+                stderr=sys.stderr)
         except Exception as e:
             logging.error(f'Solver process executed abnormally! Skipping {input_filepath}.')
             logging.error(e)
             return None
         runtime = time.time() - start
         runtimes.append(runtime)
-        logging.info(process.stderr.decode())
         logging.info(f'***************** Ran in {runtime}s *****************')
         input_file.close()
     return runtimes
