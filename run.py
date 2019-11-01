@@ -6,17 +6,18 @@ import time
 import argparse
 import logging
 
-def measure_runtime(command_dir, command_list, input_filepath, index, amount, often):
+def measure_runtime(command_list, input_filepath, output_filepath, index, amount, often):
     runtimes = []
     for _ in range(often):
         input_file = open(input_filepath)
+        output_file = open(output_filepath, 'w') if output_filepath is not None else None
         logging.info('\n\n')
-        logging.info(f'----------- #{index}/{amount} INPUT {input_filepath} -----------\n')
+        logging.info(f'----------- #{index}/{amount} INPUT {input_filepath} -----------')
         start = time.time()
         try:
             subprocess.run(command_list,
                 stdin=input_file,
-                cwd=command_dir,
+                stdout=output_file,
                 check=True,
                 stderr=sys.stderr)
         except Exception as e:
@@ -27,12 +28,15 @@ def measure_runtime(command_dir, command_list, input_filepath, index, amount, of
         runtimes.append(runtime)
         logging.info(f'***************** Ran in {runtime}s *****************')
         input_file.close()
+        if output_file is not None:
+            output_file.close()
     return runtimes
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--command', '-c', required=True)
     parser.add_argument('--often', '-o', type=int, default=1)
+    parser.add_argument('--extension', '-e', type=str, default='')
     parser.add_argument('--verbose', '-v', action='count')
     parser.add_argument('input_paths', type=str, nargs='+')
     args = parser.parse_args()
@@ -47,13 +51,23 @@ if __name__ == '__main__':
     logging.basicConfig(format='%(message)s', level=log_levels[args.verbose])
 
     try:
-        with open('info.json') as f:
-            info = json.load(f)
+        with open('info.json') as f: info = json.load(f)
     except:
         info = {}
 
     for index, filepath in enumerate(args.input_paths):
-        runtimes = measure_runtime('.', args.command.split(), filepath, index+1, len(args.input_paths), args.often)
+        if args.extension:
+            output_filepath = filepath + args.extension
+        else:
+            output_filepath = None
+
+        runtimes = measure_runtime(
+            args.command.split(),
+            filepath,
+            output_filepath,
+            index+1,
+            len(args.input_paths),
+            args.often)
 
         _, basename = path.split(filepath)
         dot_index = basename.rfind('.')
