@@ -254,7 +254,7 @@ def solve_knapsack(knapsack_problem, modulo=1, removable_exponents=[]):
     # sort the weights ascendingly, otherwise the intervals will not be computed correctly
     knapsack_items.sort(key=lambda item: item.clean_weight)
 
-    logging.info(f'The Knapsack has total capacity {capacity}, and the following items are available:')
+    logging.info(f'The Knapsack has total capacity {capacity}, and the following {len(knapsack_items)} items are available:')
     Item.show_all(knapsack_items)
 
     # sum up all combinations of the first so-and-so-many weights
