@@ -1,3 +1,12 @@
+# Quick Start
+
+On Linux, do
+```bash
+git clone git@github.com:Jachtabahn/knapsack.git
+cd knapsack
+python knapsack.py  < madcat/inst/kp/knap_10_9052.kp
+```
+
 # Approach to the Knapsack problem
 
 Here, I take a Knapsack instance given by a list of costs, a list of benefits and a budget, and for each item,
